@@ -1,52 +1,57 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import rigoImageUrl from "../assets/img/rigo-baby.jpg";
 import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
 
 export const Home = () => {
 
-	const { store, dispatch } = useGlobalReducer()
+	const [ userData, setUserData ] = useState();
 
-	const loadMessage = async () => {
-		try {
-			const backendUrl = import.meta.env.VITE_BACKEND_URL
-
-			if (!backendUrl) throw new Error("VITE_BACKEND_URL is not defined in .env file")
-
-			const response = await fetch(backendUrl + "/api/hello")
-			const data = await response.json()
-
-			if (response.ok) dispatch({ type: "set_hello", payload: data.message })
-
-			return data
-
-		} catch (error) {
-			if (error.message) throw new Error(
-				`Could not fetch the message from the backend.
-				Please check if the backend is running and the backend port is public.`
-			);
+	async function handleCallApi() {
+		const token = localStorage.getItem("access_token");
+		if (!token) {
+			alert("No access token found");
+			return;
 		}
-
+		try {
+			const res = await fetch("https://laughing-orbit-v64px7qwjqr3xrpp-3001.app.github.dev/api/protected", {
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+					"Authorization": `Bearer ${token}`, // [IMPORTANTE] Asegúrate de que el token se envía correctamente
+				},
+			});
+			if (!res.ok) {
+				// Intenta obtener el mensaje de error del backend
+				let errorMsg = "Failed to fetch user data";
+				try {
+					const errorData = await res.json();
+					if (errorData && errorData.msg) errorMsg = errorData.msg;
+					if (errorData && errorData.message) errorMsg = errorData.message;
+				} catch { }
+				throw new Error(errorMsg);
+			}
+			const data = await res.json();
+			setUserData(data);
+		} catch (err) {
+			alert(err.message);
+		}
 	}
 
-	useEffect(() => {
-		loadMessage()
-	}, [])
 
 	return (
 		<div className="text-center mt-5">
-			<h1 className="display-4">Hello Rigo!!</h1>
-			<p className="lead">
-				<img src={rigoImageUrl} className="img-fluid rounded-circle mb-3" alt="Rigo Baby" />
-			</p>
-			<div className="alert alert-info">
-				{store.message ? (
-					<span>{store.message}</span>
-				) : (
-					<span className="text-danger">
-						Loading message from the backend (make sure your python 🐍 backend is running)...
-					</span>
-				)}
-			</div>
+			<h1>Welcome to the <span className="text-primary">React</span> Frontend!</h1>
+			<button
+				className="btn btn-primary my-3"
+				onClick={handleCallApi}
+			>
+				Obtener datos de usuario
+			</button>
+			{userData && (
+				<pre className="text-start bg-light p-3 rounded">
+					{JSON.stringify(userData, null, 2)}
+				</pre>
+			)}
 		</div>
 	);
 }; 
